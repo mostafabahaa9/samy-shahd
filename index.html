@@ -1,0 +1,535 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="only light">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>سامي و شهد — خطوبة</title>
+<!--
+  خطوبة سامي وشهد — a scroll-story invitation.
+
+  Same contract as the catalog designs in designs/: everything couple-specific
+  is read ONCE from #invite-config below, so the API can inject a couple's
+  values and the builder's live preview can re-run this script. Extra fields
+  this design adds: occasion, groom_name_en, bride_name_en, groom_photo,
+  bride_photo (childhood photos; transparent cut-outs look best).
+
+  Scroll effects are plain JS driven by section progress (0→1), not CSS
+  scroll-timelines, so they behave the same in every mobile browser.
+  prefers-reduced-motion gets the finished state with no motion.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Amiri:wght@400;700&family=Great+Vibes&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FBF6EE; --paper:#FFFDF8; --ink:#4A3728; --soft:#7A6250;
+    --gold:#B08A57; --gold-2:#D7BC8F; --rose:#C9575F; --blush:#F2DCD6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--cream);color:var(--ink);font-family:'Amiri',serif;overflow-x:hidden;
+    -webkit-font-smoothing:antialiased}
+  img{display:block;max-width:100%}
+
+  /* the gold thread across the top that fills as you scroll */
+  .progress{position:fixed;top:0;right:0;height:3px;width:100%;transform-origin:right;transform:scaleX(0);
+    background:linear-gradient(90deg,var(--gold-2),var(--gold));z-index:50}
+
+  section{position:relative;width:100%}
+  .wrap{width:min(100%,520px);margin:0 auto;padding:0 24px;text-align:center}
+
+  /* ── 1. opening ─────────────────────────────────────────────── */
+  .hero{min-height:100svh;display:flex;flex-direction:column;align-items:center;overflow:hidden;
+    background:radial-gradient(ellipse 90% 60% at 50% 35%,var(--paper),var(--cream))}
+  /* centred by auto margins, with the cue below it in normal flow, so on a
+     short screen the hero grows instead of the cue landing on the names */
+  .hero .wrap{position:relative;margin:auto;padding-top:32px;padding-bottom:12px}
+  .hero .basmala{font-family:'Amiri',serif;font-size:22px;color:var(--gold);margin-bottom:18px;letter-spacing:0}
+  .hero .occ{font-family:'Aref Ruqaa',serif;font-weight:700;font-size:clamp(54px,15vw,84px);line-height:1.1;color:var(--ink)}
+  .hero .rule{width:150px;height:1px;margin:18px auto;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+  .hero .names{font-family:'Aref Ruqaa',serif;font-weight:700;font-size:clamp(40px,11vw,60px);color:var(--ink)}
+  .hero .names .amp{font-family:'Great Vibes',cursive;color:var(--gold);font-size:.9em;margin:0 .15em}
+  .hero .en{font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:.3em;font-size:14px;color:var(--soft);margin-top:6px;direction:ltr}
+  .hero .when{margin-top:22px;font-size:22px;color:var(--soft)}
+  .hero .rays{position:absolute;left:0;right:0;top:0;width:100%;height:42%;opacity:.35;pointer-events:none}
+  .cue{width:100%;padding:8px 0 28px;text-align:center;font-size:15px;color:var(--soft)}
+  .cue i{display:block;width:22px;height:22px;margin:6px auto 0;border-left:2px solid var(--gold);border-bottom:2px solid var(--gold);
+    transform:rotate(-45deg);animation:cue 1.6s ease-in-out infinite}
+  @keyframes cue{0%,100%{transform:translateY(0) rotate(-45deg);opacity:.5}50%{transform:translateY(8px) rotate(-45deg);opacity:1}}
+  .hero .in{opacity:0;transform:translateY(18px);transition:opacity 1s ease,transform 1s ease}
+  .hero.ready .in{opacity:1;transform:none}
+  .hero.ready .in:nth-child(2){transition-delay:.15s}.hero.ready .in:nth-child(3){transition-delay:.3s}
+  .hero.ready .in:nth-child(4){transition-delay:.45s}.hero.ready .in:nth-child(5){transition-delay:.6s}
+  .hero.ready .in:nth-child(6){transition-delay:.75s}
+
+  /* ── 2. pinned childhood story ──────────────────────────────── */
+  .story{height:340svh}
+  .story .stage{position:sticky;top:0;height:100svh;overflow:hidden;
+    background:linear-gradient(180deg,var(--cream),var(--paper) 50%,var(--cream))}
+  .story .cap{position:absolute;top:9svh;left:0;right:0;text-align:center;font-family:'Aref Ruqaa',serif;font-weight:700;
+    font-size:clamp(28px,8vw,40px);color:var(--ink);opacity:0}
+  .story .kid{position:absolute;bottom:22svh;width:min(46vw,250px);will-change:transform,filter}
+  .story .kid img{width:100%;height:auto;filter:drop-shadow(0 18px 24px rgba(74,55,40,.18))}
+  .story .kid .tag{margin-top:8px;font-family:'Aref Ruqaa',serif;font-weight:700;font-size:26px;color:var(--gold);opacity:0}
+  /* anchored to the centred 520px column, so on a wide screen they still meet */
+  .story .groom{right:max(0px,calc(50% - 260px))}
+  .story .bride{left:max(0px,calc(50% - 260px))}
+  .story svg.thread{position:absolute;z-index:3;left:50%;bottom:5svh;width:min(70vw,360px);height:auto;transform:translateX(-50%);overflow:visible}
+  .story .verse{position:absolute;top:17svh;left:0;right:0;padding:0 26px;text-align:center;
+    font-family:'Aref Ruqaa',serif;font-weight:700;font-size:clamp(22px,6vw,30px);line-height:1.7;color:var(--ink)}
+  .story .verse span{opacity:0;transition:opacity .25s linear}
+  .story .verse span.on{opacity:1}
+
+  /* ── 3. fatiha ──────────────────────────────────────────────── */
+  .fatiha{padding:16svh 0 14svh;background:var(--paper)}
+  .fatiha svg.rings{width:190px;height:auto;margin:0 auto 26px}
+  .fatiha h2{font-family:'Aref Ruqaa',serif;font-weight:700;font-size:clamp(36px,10vw,52px);color:var(--ink)}
+  .fatiha p{margin-top:16px;font-size:21px;line-height:2;color:var(--soft)}
+  .reveal{opacity:0;transform:translateY(26px);transition:opacity .9s ease,transform .9s ease}
+  .reveal.on{opacity:1;transform:none}
+
+  /* ── 4. date ────────────────────────────────────────────────── */
+  .date{padding:14svh 0;overflow:hidden;background:linear-gradient(180deg,var(--paper),var(--blush) 60%,var(--cream))}
+  .date .day{font-size:26px;color:var(--soft)}
+  .date .big{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:clamp(110px,34vw,170px);line-height:1;color:var(--ink)}
+  .date .month{font-family:'Aref Ruqaa',serif;font-weight:700;font-size:clamp(34px,10vw,48px);color:var(--gold)}
+  .date .fly{display:block;will-change:transform,opacity}
+  .count{display:flex;justify-content:center;gap:12px;margin-top:30px;direction:rtl}
+  .count div{min-width:72px;padding:12px 6px;border-radius:16px;background:rgba(255,253,248,.75);border:1px solid var(--gold-2)}
+  .count b{display:block;font-family:'Cormorant Garamond',serif;font-size:34px;color:var(--ink)}
+  .count small{font-size:14px;color:var(--soft)}
+  .btn{display:inline-block;margin-top:26px;padding:13px 28px;border-radius:999px;background:var(--ink);color:var(--cream);
+    font-family:'Amiri',serif;font-size:18px;text-decoration:none}
+
+  /* ── 5. venue (only when set) ───────────────────────────────── */
+  .venue{padding:12svh 0;background:var(--cream)}
+  .venue h3{font-family:'Aref Ruqaa',serif;font-weight:700;font-size:38px}
+  .venue .addr{margin-top:12px;font-size:22px;line-height:1.9;color:var(--soft);white-space:pre-line}
+  .venue[hidden]{display:none}
+
+  /* how to get there: shared by the venue section and the gate's sheet */
+  .dirs{margin-top:22px;text-align:right}
+  .dirs .grp{margin-top:18px;padding:16px 18px;border-radius:18px;background:rgba(255,253,248,.8);border:1px solid var(--gold-2)}
+  .dirs h4{font-family:'Aref Ruqaa',serif;font-weight:700;font-size:22px;color:var(--gold)}
+  .dirs p{margin-top:6px;font-size:18px;line-height:1.85;color:var(--ink)}
+  .dirs .or{margin:8px 0 2px;text-align:center;font-size:15px;color:var(--gold)}
+
+  /* ── 6. closing ─────────────────────────────────────────────── */
+  .close{min-height:90svh;display:flex;align-items:center;justify-content:center;overflow:hidden;
+    background:radial-gradient(ellipse 80% 60% at 50% 60%,var(--paper),var(--cream))}
+  .close .msg{font-family:'Aref Ruqaa',serif;font-weight:700;font-size:clamp(32px,9vw,46px);line-height:1.6}
+  .close .sign{margin-top:22px;font-family:'Great Vibes',cursive;font-size:44px;color:var(--gold);direction:ltr}
+  .heart{position:absolute;bottom:-40px;width:22px;height:20px;opacity:0;pointer-events:none}
+
+  /* tap-to-open cover (only when music is configured) */
+  .gate{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    background:radial-gradient(ellipse 90% 60% at 50% 40%,var(--paper),var(--cream));cursor:pointer;text-align:center;
+    transition:opacity .8s ease,transform .8s ease}
+  .gate.gone{opacity:0;transform:scale(1.04);pointer-events:none}
+  .gate[hidden]{display:none}
+  .gate .g-occ{font-family:'Aref Ruqaa',serif;font-weight:700;font-size:clamp(46px,13vw,70px);color:var(--ink)}
+  .gate .g-names{font-family:'Aref Ruqaa',serif;font-weight:700;font-size:clamp(30px,8vw,40px);color:var(--gold)}
+  .gate .g-tap{margin-top:26px;position:relative;width:84px;height:84px;border-radius:50%;border:1.5px solid var(--gold);
+    display:flex;align-items:center;justify-content:center;font-size:30px;color:var(--rose)}
+  .gate .g-tap::after{content:'';position:absolute;inset:-8px;border-radius:50%;border:1px solid var(--gold-2);animation:ping 1.8s ease-out infinite}
+  @keyframes ping{0%{transform:scale(.9);opacity:.9}100%{transform:scale(1.35);opacity:0}}
+  .gate .g-tap{background:none;cursor:pointer;font-family:inherit}
+  .gate button:focus{outline:none}
+  .gate button:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+  .gate .g-hint{font-size:18px;color:var(--soft)}
+  .gate .g-map{margin-top:14px;display:inline-flex;align-items:center;gap:8px;padding:11px 24px;border-radius:999px;
+    border:1px solid var(--gold);background:rgba(255,253,248,.7);color:var(--ink);font-family:'Amiri',serif;font-size:18px;cursor:pointer}
+  .gate .g-map svg{width:18px;height:18px;flex:none}
+  .gate .g-map[hidden]{display:none}
+
+  /* the place sheet, opened from the gate */
+  .sheet{margin:auto auto 0;width:100%;max-width:520px;max-height:88svh;overflow:auto;border:0;border-radius:24px 24px 0 0;padding:0;
+    background:var(--cream);color:var(--ink);text-align:center}
+  .sheet .in{padding:30px 22px calc(26px + env(safe-area-inset-bottom))}
+  .sheet::backdrop{background:rgba(74,55,40,.45)}
+  .sheet[open]{animation:up .35s ease-out}
+  @keyframes up{from{transform:translateY(40px);opacity:0}}
+  .sheet h3{font-family:'Aref Ruqaa',serif;font-weight:700;font-size:34px}
+  .sheet .addr{margin-top:8px;font-size:20px;line-height:1.8;color:var(--soft);white-space:pre-line}
+  .sheet .x{position:absolute;top:12px;left:14px;width:40px;height:40px;border:0;border-radius:50%;background:none;
+    font-size:28px;line-height:1;color:var(--soft);cursor:pointer}
+  .music{position:fixed;bottom:18px;left:18px;z-index:60;width:48px;height:48px;border-radius:50%;
+    border:1px solid var(--gold-2);background:var(--paper);color:var(--ink);font-size:20px;cursor:pointer;
+    box-shadow:0 6px 18px rgba(74,55,40,.12)}
+  .music[hidden]{display:none}
+  .music.on{animation:spin 6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .cue i{animation:none}
+    .hero .in,.reveal{opacity:1;transform:none;transition:none}
+    .gate .g-tap::after,.music.on,.sheet[open]{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+
+<!-- tap-to-open cover: shown only when music_url is set; the tap starts the song -->
+<div class="gate" id="gate" hidden>
+  <div class="g-occ" data-occ>خطوبة</div>
+  <div class="g-names"><span data-groom>سامي</span> &amp; <span data-bride>شهد</span></div>
+  <button class="g-tap" id="gateOpen" type="button" aria-label="افتحوا الدعوة">♥</button>
+  <div class="g-hint">اضغطوا لفتح الدعوة</div>
+  <button class="g-map" id="gateMap" type="button" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="#B08A57" stroke-width="2" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>
+    اعرفوا مكاننا
+  </button>
+</div>
+<button class="music" id="musicBtn" type="button" hidden>♫</button>
+
+<!-- the place: name, how to get there, map link (opened from the gate) -->
+<dialog class="sheet" id="placeSheet" aria-labelledby="placeTitle">
+  <div class="in">
+  <button class="x" type="button" data-close aria-label="إغلاق">×</button>
+  <h3 id="placeTitle">المكان</h3>
+  <p class="addr" data-venue></p>
+  <div class="dirs" data-directions></div>
+  <a class="btn" data-map target="_blank" rel="noopener">افتحوا الخريطة</a>
+  </div>
+</dialog>
+
+<!-- 1 · opening -->
+<section class="hero" id="hero">
+  <svg class="rays" viewBox="0 0 400 260" preserveAspectRatio="xMidYMin meet" id="rays"></svg>
+  <div class="wrap">
+    <div class="basmala in">بسم الله الرحمن الرحيم</div>
+    <div class="occ in" data-occ>خطوبة</div>
+    <div class="rule in"></div>
+    <div class="names in"><span data-groom>سامي</span><span class="amp">&amp;</span><span data-bride>شهد</span></div>
+    <div class="en in" data-en>SAMI &amp; SHAHD</div>
+    <div class="when in" data-when>الجمعة ٢٧ نوفمبر ٢٠٢٦</div>
+  </div>
+  <div class="cue">اسحبوا لتحت<i></i></div>
+</section>
+
+<!-- 2 · the childhood story, pinned while you scroll -->
+<section class="story" id="story">
+  <div class="stage">
+    <div class="cap" id="cap1">كان صغير…</div>
+    <div class="cap" id="cap2">وكانت صغيرة…</div>
+    <div class="cap" id="cap3">وكبروا <span style="color:var(--rose)">♥</span></div>
+
+    <svg class="thread" viewBox="0 0 360 200" fill="none" stroke="#C9575F" stroke-width="3" stroke-linecap="round">
+      <path id="threadPath" d="M20 178 C 80 178, 120 170, 180 166 C 118 124, 110 70, 146 54 C 166 45, 180 60, 180 76 C 180 60, 194 45, 214 54 C 250 70, 242 124, 180 166 C 240 170, 280 178, 340 178"/>
+    </svg>
+
+    <div class="kid groom" id="kGroom"><img data-groom-photo src="assets/groom-cut.webp" alt=""><div class="tag" data-groom>سامي</div></div>
+    <div class="kid bride" id="kBride"><img data-bride-photo src="assets/bride-cut.webp" alt=""><div class="tag" data-bride>شهد</div></div>
+
+    <div class="verse" id="verse"></div>
+  </div>
+</section>
+
+<!-- 3 · the fatiha -->
+<section class="fatiha">
+  <div class="wrap">
+    <svg class="rings reveal" id="rings" viewBox="0 0 190 120" fill="none" stroke="#B08A57" stroke-width="4" stroke-linecap="round">
+      <circle class="ring" cx="72" cy="70" r="40"/>
+      <circle class="ring" cx="118" cy="70" r="40"/>
+      <path class="ring" d="M60 26 l12 -16 l12 16" stroke-width="3"/>
+    </svg>
+    <h2 class="reveal" data-occ>خطوبة</h2>
+    <p class="reveal" data-msg>بحضور العيلتين، هنحتفل بخطوبتنا ونبدأ أول خطوة في حكايتنا — ويسعدنا تكونوا معانا.</p>
+  </div>
+</section>
+
+<!-- 4 · the date -->
+<section class="date" id="date">
+  <div class="wrap">
+    <span class="fly day" data-fly="1" data-day>الجمعة</span>
+    <span class="fly big" data-fly="-1" data-dnum>27</span>
+    <span class="fly month" data-fly="1" data-month>نوفمبر ٢٠٢٦</span>
+    <div class="count reveal" id="count">
+      <div><b data-d>--</b><small>يوم</small></div>
+      <div><b data-h>--</b><small>ساعة</small></div>
+      <div><b data-m>--</b><small>دقيقة</small></div>
+    </div>
+    <a class="btn reveal" id="cal" target="_blank" rel="noopener">أضيفوها للتقويم</a>
+  </div>
+</section>
+
+<!-- 5 · venue (hidden until venue_text is set) -->
+<section class="venue" id="venue" hidden>
+  <div class="wrap">
+    <h3 class="reveal">المكان</h3>
+    <p class="addr reveal" data-venue></p>
+    <div class="dirs reveal" data-directions></div>
+    <a class="btn reveal" data-map target="_blank" rel="noopener">افتحوا الخريطة</a>
+  </div>
+</section>
+
+<!-- 6 · closing -->
+<section class="close" id="close">
+  <div class="wrap">
+    <div class="msg reveal">بحضوركم<br>تكمل فرحتنا</div>
+    <div class="sign reveal" data-sign>Sami &amp; Shahd</div>
+  </div>
+</section>
+
+<script id="invite-config" type="application/json">
+{
+  "occasion": "خطوبة",
+  "groom_name": "سامي",
+  "bride_name": "شهد",
+  "groom_name_en": "Sami",
+  "bride_name_en": "Shahd",
+  "event_date": "2026-11-27T19:00:00+02:00",
+  "venue_text": "الحومديه\nطريق 11 شارع المستشار",
+  "venue_map_url": "https://www.google.com/maps/search/?api=1&query=%D8%A7%D9%84%D8%AD%D9%88%D9%85%D8%AF%D9%8A%D8%A9%20%D8%B7%D8%B1%D9%8A%D9%82%2011%20%D8%B4%D8%A7%D8%B1%D8%B9%20%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D8%B4%D8%A7%D8%B1",
+  "venue_directions": [],
+  "message": "بحضور العيلتين، هنحتفل بخطوبتنا ونبدأ أول خطوة في حكايتنا — ويسعدنا تكونوا معانا.",
+  "groom_photo": "assets/groom-cut.webp",
+  "bride_photo": "assets/bride-cut.webp",
+  "music_url": "assets/Albumaty.Com_amrw_dyab_htdla.mp3",
+  "locale": "ar"
+}
+</script>
+<script>
+const cfg = JSON.parse(document.getElementById('invite-config').textContent);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const AR_DIGITS = (s) => String(s).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+
+/* ── fill from config ─────────────────────────────────────────────── */
+const groom = cfg.groom_name || 'سامي', bride = cfg.bride_name || 'شهد';
+$$('[data-groom]').forEach((e) => (e.textContent = groom));
+$$('[data-bride]').forEach((e) => (e.textContent = bride));
+$$('[data-occ]').forEach((e) => (e.textContent = cfg.occasion || 'خطوبة'));
+if (cfg.groom_photo) $('[data-groom-photo]').src = cfg.groom_photo;
+if (cfg.bride_photo) $('[data-bride-photo]').src = cfg.bride_photo;
+if (cfg.message) $('[data-msg]').textContent = cfg.message;
+const en = [cfg.groom_name_en, cfg.bride_name_en].filter(Boolean);
+$('[data-en]').textContent = en.length === 2 ? `${en[0].toUpperCase()} & ${en[1].toUpperCase()}` : '';
+$('[data-sign]').textContent = en.length === 2 ? `${en[0]} & ${en[1]}` : `${groom} و ${bride}`;
+document.title = `${groom} و ${bride} — ${cfg.occasion || 'خطوبة'}`;
+
+/* A date with no time ("2026-10-29") is a whole day: shown without a clock,
+   and the countdown runs to the start of that day. */
+const hasTime = /T\d/.test(cfg.event_date || '');
+const when = cfg.event_date ? new Date(hasTime ? cfg.event_date : cfg.event_date + 'T00:00:00') : null;
+if (when && !isNaN(when)) {
+  const day = when.toLocaleDateString('ar-EG', { weekday: 'long' });
+  const month = when.toLocaleDateString('ar-EG', { month: 'long' });
+  $('[data-when]').textContent = when.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).replace('،', '')
+    + (hasTime ? ' · ' + when.toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' }) : '');
+  $('[data-day]').textContent = day;
+  $('[data-dnum]').textContent = when.getDate();
+  $('[data-month]').textContent = `${month} ${AR_DIGITS(when.getFullYear())}`;
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const tick = () => {
+    const ms = Math.max(0, when - Date.now());
+    $('[data-d]').textContent = AR_DIGITS(Math.floor(ms / 864e5));
+    $('[data-h]').textContent = AR_DIGITS(pad(Math.floor(ms / 36e5) % 24));
+    $('[data-m]').textContent = AR_DIGITS(pad(Math.floor(ms / 6e4) % 60));
+  };
+  tick(); setInterval(tick, 30000);
+
+  const ymd = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+  const gcal = (d) => d.toISOString().replace(/[-:]|\.\d{3}/g, '');
+  let dates;
+  if (hasTime) {
+    const end = new Date(when.getTime() + 3 * 3600e3);
+    dates = `${gcal(when)}/${gcal(end)}`;
+  } else {
+    const next = new Date(when); next.setDate(next.getDate() + 1);
+    dates = `${ymd(when)}/${ymd(next)}`;
+  }
+  $('#cal').href = 'https://calendar.google.com/calendar/render?' + new URLSearchParams({
+    action: 'TEMPLATE', text: `${cfg.occasion || 'خطوبة'} — ${groom} و ${bride}`,
+    dates, details: cfg.message || '', location: (cfg.venue_text || '').replace(/\n/g, ', '),
+  });
+} else {
+  $('#date').hidden = true;
+}
+
+/* venue_directions: [{ title, options: [..] }], options being alternative
+   routes, so they're joined by «أو». Built with textContent, never innerHTML. */
+const hasVenue = !!(cfg.venue_text && cfg.venue_text.trim());
+if (hasVenue) {
+  $('#venue').hidden = false;
+  $$('[data-venue]').forEach((e) => (e.textContent = cfg.venue_text));
+  const map = cfg.venue_map_url || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(cfg.venue_text.replace(/\n/g, ', '));
+  $$('[data-map]').forEach((a) => (a.href = map));
+  const groups = Array.isArray(cfg.venue_directions) ? cfg.venue_directions : [];
+  $$('[data-directions]').forEach((host) => {
+    host.hidden = !groups.length;
+    groups.forEach((g) => {
+      const box = document.createElement('div'); box.className = 'grp';
+      const h = document.createElement('h4'); h.textContent = g.title || ''; box.append(h);
+      (g.options || []).forEach((txt, i) => {
+        if (i) { const or = document.createElement('div'); or.className = 'or'; or.textContent = 'أو'; box.append(or); }
+        const p = document.createElement('p'); p.textContent = txt; box.append(p);
+      });
+      host.append(box);
+    });
+  });
+}
+
+/* ── opening: sun rays + staged fade-in ───────────────────────────── */
+(function rays() {
+  let s = '';
+  for (let i = 0; i <= 30; i++) {
+    const a = Math.PI * (0.05 + 0.9 * i / 30), r1 = 30, r2 = i % 2 ? 150 : 230;
+    s += `<line x1="${200 + Math.cos(a) * r1}" y1="${Math.sin(a) * r1}" x2="${200 + Math.cos(a) * r2}" y2="${Math.sin(a) * r2}" stroke="#D7BC8F" stroke-width="1"/>`;
+  }
+  $('#rays').innerHTML = s;
+})();
+requestAnimationFrame(() => $('#hero').classList.add('ready'));
+
+/* ── the verse, split into words for the word-by-word reveal ──────── */
+const VERSE = 'وكأن القلب عرفها من وهو صغير، فاختارها للعمر كله';
+$('#verse').innerHTML = VERSE.split(' ').map((w) => `<span>${w}</span>`).join(' ');
+const words = $$('#verse span');
+
+/* ── scroll engine ────────────────────────────────────────────────── */
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const seg = (p, a, b) => clamp((p - a) / (b - a));
+const ease = (t) => 1 - Math.pow(1 - t, 3);
+const thread = $('#threadPath');
+const threadLen = thread.getTotalLength();
+thread.style.strokeDasharray = threadLen;
+const rings = $$('#rings .ring');
+rings.forEach((r) => { const L = r.getTotalLength(); r.style.strokeDasharray = L; r.dataset.len = L; });
+
+/* progress of an element through the viewport: 0 when its top reaches the
+   viewport bottom, 1 when its bottom reaches the viewport top */
+function through(el) {
+  const r = el.getBoundingClientRect(), vh = innerHeight;
+  return clamp((vh - r.top) / (r.height + vh));
+}
+/* progress through a pinned (sticky) section: 0 at pin start, 1 at release */
+function pinned(el) {
+  const r = el.getBoundingClientRect();
+  return clamp(-r.top / (r.height - innerHeight));
+}
+
+const kG = $('#kGroom'), kB = $('#kBride');
+const caps = [$('#cap1'), $('#cap2'), $('#cap3')];
+
+function frame() {
+  const doc = document.documentElement;
+  $('#progress').style.transform = `scaleX(${clamp(scrollY / (doc.scrollHeight - innerHeight))})`;
+
+  /* 2 · story. p: 0–.28 groom enters · .28–.56 bride enters · .56–.8 they
+     meet and the thread draws · .62–.95 the verse reveals word by word */
+  const p = reduced ? 1 : pinned($('#story'));
+  const gIn = ease(seg(p, 0.02, 0.26)), bIn = ease(seg(p, 0.30, 0.54)), meet = ease(seg(p, 0.56, 0.78));
+  // all in % of each kid's own width: off-screen 110% → resting 0 → 12% inward when they meet
+  const gx = (1 - gIn) * 110 - meet * 12;
+  const bx = -(1 - bIn) * 110 + meet * 12;
+  const colorG = 1 - seg(p, 0.10, 0.50), colorB = 1 - seg(p, 0.36, 0.70);
+  kG.style.transform = `translateX(${gx}%) rotate(${-4 * meet}deg)`;
+  kB.style.transform = `translateX(${bx}%) rotate(${4 * meet}deg)`;
+  kG.querySelector('img').style.filter = `grayscale(${colorG}) sepia(${colorG * 0.25}) drop-shadow(0 18px 24px rgba(74,55,40,.18))`;
+  kB.querySelector('img').style.filter = `grayscale(${colorB}) sepia(${colorB * 0.25}) drop-shadow(0 18px 24px rgba(74,55,40,.18))`;
+  kG.querySelector('.tag').style.opacity = seg(p, 0.16, 0.26);
+  kB.querySelector('.tag').style.opacity = seg(p, 0.44, 0.54);
+  const capA = [seg(p, 0.03, 0.12) - seg(p, 0.26, 0.31), seg(p, 0.31, 0.40) - seg(p, 0.54, 0.59), seg(p, 0.60, 0.70)];
+  caps.forEach((c, i) => { c.style.opacity = clamp(capA[i]); c.style.transform = `translateY(${(1 - clamp(capA[i])) * 12}px)`; });
+  thread.style.strokeDashoffset = threadLen * (1 - ease(seg(p, 0.58, 0.82)));
+  const wk = seg(p, 0.62, 0.95) * words.length;
+  words.forEach((w, i) => w.classList.toggle('on', i < wk));
+
+  /* 3 · rings draw as the section crosses the screen */
+  const rp = reduced ? 1 : ease(seg(through($('.fatiha')), 0.12, 0.45));
+  rings.forEach((r) => (r.style.strokeDashoffset = r.dataset.len * (1 - rp)));
+
+  /* 4 · date lines fly in from alternate sides */
+  const dp = reduced ? 1 : ease(seg(through($('#date')), 0.05, 0.40));
+  $$('[data-fly]').forEach((el, i) => {
+    const dir = Number(el.dataset.fly), k = clamp(dp * 1.4 - i * 0.2);
+    el.style.transform = `translateX(${(1 - k) * dir * 60}vw)`;
+    el.style.opacity = k;
+  });
+}
+
+let queued = false;
+const onScroll = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; frame(); }); } };
+addEventListener('scroll', onScroll, { passive: true });
+addEventListener('resize', onScroll);
+frame();
+
+/* simple reveals */
+const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && e.target.classList.add('on')), { threshold: 0.25 });
+$$('.reveal').forEach((el) => (reduced ? el.classList.add('on') : io.observe(el)));
+
+/* closing: hearts drift up while the last section is on screen */
+(function hearts() {
+  if (reduced) return;
+  const host = $('#close');
+  for (let i = 0; i < 14; i++) {
+    const h = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    h.setAttribute('viewBox', '0 0 22 20'); h.setAttribute('class', 'heart');
+    h.innerHTML = '<path d="M11 19 C 2 13, 0 6, 5 3 C 8 1, 11 3, 11 6 C 11 3, 14 1, 17 3 C 22 6, 20 13, 11 19 Z" fill="#C9575F"/>';
+    h.style.left = (6 + Math.random() * 88) + '%';
+    h.animate([
+      { transform: 'translateY(0) scale(.6)', opacity: 0 },
+      { opacity: .8, offset: .2 },
+      { transform: `translateY(-${60 + Math.random() * 30}svh) translateX(${(Math.random() - .5) * 60}px) scale(1)`, opacity: 0 },
+    ], { duration: 5000 + Math.random() * 4000, delay: Math.random() * 6000, iterations: Infinity, easing: 'ease-out' });
+    host.appendChild(h);
+  }
+})();
+
+/* ── music ────────────────────────────────────────────────────────────
+   Browsers refuse to start sound until the visitor taps, so with a song
+   configured the invitation opens behind a tap-to-open cover: the tap that
+   opens it is the tap that starts the music (faded in, never blasting).
+   Without music_url there is no cover at all. */
+/* gate always opens the invite; music is optional */
+(() => {
+  let play = () => {};
+  if (cfg.music_url) {
+    const audio = new Audio(cfg.music_url);
+    audio.loop = true; audio.preload = 'auto'; audio.volume = 0;
+    const fadeTo = (target, ms) => {
+      const from = audio.volume, start = performance.now();
+      const step = (now) => {
+        const k = Math.min(1, (now - start) / ms);
+        audio.volume = from + (target - from) * k;
+        if (k < 1) requestAnimationFrame(step); else if (target === 0) audio.pause();
+      };
+      requestAnimationFrame(step);
+    };
+    play = () => { audio.play().then(() => fadeTo(0.85, 1800)).catch(() => {}); };
+    const btn = $('#musicBtn');
+    const sync = () => { btn.classList.toggle('on', !audio.paused); btn.setAttribute('aria-label', audio.paused ? 'تشغيل الموسيقى' : 'إيقاف الموسيقى'); };
+    audio.addEventListener('play', sync); audio.addEventListener('pause', sync);
+    btn.hidden = false;
+    btn.onclick = () => (audio.paused ? play() : fadeTo(0, 400));
+  }
+
+  const gate = $('#gate');
+  gate.hidden = false;
+  document.documentElement.style.overflow = 'hidden';
+  const open = () => {
+    play();
+    gate.classList.add('gone');
+    const hero = $('#hero'); hero.classList.remove('ready'); void hero.offsetWidth; hero.classList.add('ready');
+    document.documentElement.style.overflow = '';
+    setTimeout(() => gate.remove(), 900);
+  };
+  gate.addEventListener('click', (e) => { if (!e.target.closest('#gateMap')) open(); });
+  $('#gateOpen').focus({ preventScroll: true });
+
+  if (hasVenue) {
+    const sheet = $('#placeSheet');
+    $('#gateMap').hidden = false;
+    $('#gateMap').addEventListener('click', () => sheet.showModal());
+    $('[data-close]', sheet).addEventListener('click', () => sheet.close());
+    sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); });
+  }
+})();
+</script>
+</body>
+</html>
+
